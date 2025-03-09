@@ -40,10 +40,12 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: webapp_repo
         IMAGE_TAG: ${{ github.run_number }}
+        ARG IMAGE_VERSION: "v1"
+        ENV IMAGE_VERSION: $IMAGE_VERSION
       run: |
-        docker build -t "${ECR_REGISTRY}/${ECR_REPOSITORY}:v1" -f Dockerfile .
-       
-        docker build -t "${ECR_REGISTRY}/${ECR_REPOSITORY}:v2" -f Dockerfile .
+        docker build --build-arg IMAGE_VERSION=v1 -t "${ECR_REGISTRY}/${ECR_REPOSITORY}:v1" -f Dockerfile .
+        docker build --build-arg IMAGE_VERSION=v2 -t "${ECR_REGISTRY}/${ECR_REPOSITORY}:v2" -f Dockerfile .
 
         docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:v1"
         docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:v2"
+
