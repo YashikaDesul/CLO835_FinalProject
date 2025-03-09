@@ -43,8 +43,12 @@ jobs:
         ARG IMAGE_VERSION: "v1"
         ENV IMAGE_VERSION: $IMAGE_VERSION
       run: |
-        docker build --build-arg IMAGE_VERSION=v1 -t "${ECR_REGISTRY}/${ECR_REPOSITORY}:v1" -f Dockerfile .
-        docker build --build-arg IMAGE_VERSION=v2 -t "${ECR_REGISTRY}/${ECR_REPOSITORY}:v2" -f Dockerfile .
+        echo "Version 1" > version.txt
+        docker build --no-cache -t "${ECR_REGISTRY}/${ECR_REPOSITORY}:v1" --build-arg VERSION=v1 -f Dockerfile .
+
+        echo "Version 2" > version.txt
+        docker build --no-cache -t "${ECR_REGISTRY}/${ECR_REPOSITORY}:v2" --build-arg VERSION=v2 -f Dockerfile .
+
 
         docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:v1"
         docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:v2"
