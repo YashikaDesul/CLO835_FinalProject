@@ -1,20 +1,43 @@
-<!doctype html>
-<title>Hello from Flask</title>
-<body style="background: {{ color }};"></body>
-<div style="color: #e4e4e4;
-    text-align:  center;
-    height: 90px;
-    vertical-align:  middle;">
-{% if name %}
-  <h1>Hello from {{ name }}!</h1>
-{% else %}
-  <h1>Hello From CLO835!</h1>
-{% endif %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hello from Flask</title>
+    <style>
+        body {
+            background-image: url('{{ background_image }}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            color: #e4e4e4;
+            text-align: center;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        textarea {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
 
-  {% if contents %}
-  <textarea rows="10" cols="50">
-    {{ contents }}
-  </textarea>
-  {% endif %}
+    <h1>{{ group_name }} - {{ group_slogan }}</h1>
+    <p>Welcome to our app!</p>
 
-</div>
+    {% if name %}
+      <h1>Hello from {{ name }}!</h1>
+    {% else %}
+      <h1>Hello From CLO835!</h1>
+    {% endif %}
+
+    {% if contents %}
+      <textarea rows="10" cols="50">
+        {{ contents }}
+      </textarea>
+    {% endif %}
+
+</body>
+</html>

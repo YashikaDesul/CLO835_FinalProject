@@ -1,27 +1,65 @@
-	<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
-	<title>Get Employee Information</title>
+    <title>Get Employee Information</title>
+    <style>
+        body {
+            background-image: url('{{ background_image }}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            font-family: avenir, sans-serif;
+            color: black;
+            text-align: center;
+            padding-top: 100px;
+        }
+
+        .content {
+            background-color: rgba(255, 255, 255, 0.85);
+            margin: auto;
+            width: 60%;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: DodgerBlue;
+        }
+
+        h2 {
+            color: grey;
+        }
+
+        input {
+            height: 25px;
+            font-size: 14pt;
+            width: 250px;
+        }
+
+        button {
+            background: grey;
+            height: 45px;
+            width: 200px;
+            color: white;
+            font-style: oblique;
+            margin-top: 20px;
+        }
+    </style>
 </head>
-<center>
-	<font color="black" size="5" style="font-family: avenir">
+<body>
 
-		<h1 style="color: DodgerBlue">Employee Information</h1>
+    <h1>{{ group_name }} - {{ group_slogan }}</h1>
+    <p>Welcome to our app!</p>
 
-		<body style="background: {{ color }};">
-
-			<form action="/fetchdata" autocomplete="on" method="POST">
-
-				<h2 style="color: grey">Enter Employee ID</h2>
-
-		  		Employee ID:<br> <input style="height:25px;font-size:14pt;" type="number" name="emp_id" autofocus size="40"><br><br>
-
-
-		  		<button type="submit" style="background: grey; height: 45px; width: 200px; color: white; size: 5; font:oblique;">FETCH INFO</button><br><br>
-
-			</form>
-
-		</body>
-	</font>
-</center>
+    <div class="content">
+        <h1>Employee Information</h1>
+        <form action="/fetchdata" autocomplete="on" method="POST">
+            <h2>Enter Employee ID</h2>
+            <label for="emp_id">Employee ID:</label><br>
+            <input type="number" name="emp_id" id="emp_id" autofocus><br><br>
+            <button type="submit">FETCH INFO</button>
+        </form>
+    </div>
+</body>
 </html>

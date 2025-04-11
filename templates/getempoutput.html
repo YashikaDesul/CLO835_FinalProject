@@ -1,35 +1,55 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Employee Information</title>
+    <title>Employee Information</title>
+    <style>
+        body {
+            background-image: url('{{ background_image }}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            font-family: avenir, sans-serif;
+            color: black;
+            text-align: center;
+            padding-top: 100px;
+        }
+
+        .content {
+            background-color: rgba(255, 255, 255, 0.9);
+            margin: auto;
+            width: 60%;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: DodgerBlue;
+            margin-bottom: 40px;
+        }
+
+        .field-label {
+            font-weight: bold;
+        }
+
+        a {
+            display: inline-block;
+            margin-top: 30px;
+            text-decoration: none;
+            color: DodgerBlue;
+        }
+    </style>
 </head>
-<center>
-	<font color="black" size="5" style="font-family: avenir">
+<body>
 
-		<h1 style="color: DodgerBlue">Employee Information</h1>
+    <h1>{{ group_name }} - {{ group_slogan }}</h1>
+    <p>Welcome to our app!</p>
 
-		<body style="background: {{ color }};">
-
-			<form>
-
-				<div>
-
-			  		Employee ID:<br> {{ id }} <br><br>
-
-			  		First Name:<br> {{ fname }} <br><br>
-
-			  		Last Name:<br> {{ lname }} <br><br>
-
-			  		Primary Interest:<br> {{ interest }} <br><br>
-
-			  		Location:<br> {{ location }} <br><br>
-			  		
-			  	</div>
-
-			</form>
-			<a href="{{ url_for('home') }}">Back</a>
-		</body>
-
-	</font>
-</center>
+    <div class="content">
+        <!-- You can put your about page content here -->
+        <h1>About This App</h1>
+        <p>This application allows you to add and fetch employee information using a simple interface backed by a MySQL database and Flask API.</p>
+        <a href="{{ url_for('home') }}">Back to Home</a>
+    </div>
+</body>
 </html>
