@@ -1,55 +1,130 @@
-name: Build, Push Image to ECR for assignment 2
+name: Build, Push Image to ECR for Project 
 
-on: 
+on:
   push:
-    branches: [ main ]
-  workflow_dispatch:  # Enables manual trigger
+    branches: [ dev ]
 
 jobs:
   build:
-    name: Build Image
+    name: Automated Deployment to AWS ECR
     runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: us-east-1
+      S3_BUCKET: my-clo835-backgrounds
+      ECR_APP_REPOSITORY: clo835-app
+      ECR_DB_REPOSITORY: clo835-mysql
+      IMAGE_TAG: latest
+      DOCKER_NETWORK: clo835-network
 
     steps:
-    - name: Check out code
+    - name: GIT | Check out code
       uses: actions/checkout@v4
 
-    - name: Setup AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-        aws-region: us-east-1
-
-    - name: Login to Amazon ECR
+    - name: AWS | ECR Login
       id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
-    
-    - name: Build and Push MySQL Image
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: DOCKER | Build
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: mysql_repo
-        IMAGE_TAG: ${{ github.run_number }}
       run: |
-        docker build -t "${ECR_REGISTRY}/${ECR_REPOSITORY}:v1" -f Dockerfile_mysql .
-        docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:v1"
+        echo Build Database
+        docker build -t $ECR_REGISTRY/$ECR_DB_REPOSITORY:$IMAGE_TAG -f Dockerfile.mysql .
 
-    - name: Build and Push WebApp Image
+        echo Build Application
+        docker build -t $ECR_REGISTRY/$ECR_APP_REPOSITORY:$IMAGE_TAG -f Dockerfile .
+
+    - name: DOCKER | Run and Test
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: webapp_repo
-        IMAGE_TAG: ${{ github.run_number }}
-        ARG IMAGE_VERSION: "v1"
-        ENV IMAGE_VERSION: $IMAGE_VERSION
       run: |
-        echo "Version 1" > version.txt
-        docker build --no-cache -t "${ECR_REGISTRY}/${ECR_REPOSITORY}:v1" --build-arg VERSION=v1 -f Dockerfile .
+        # Create network
+        echo Create Bridge Network
+        docker network create -d bridge --subnet 192.168.100.0/24 --gateway 192.168.100.1 $DOCKER_NETWORK
 
-        echo "Version 2" > version.txt
-        docker build --no-cache -t "${ECR_REGISTRY}/${ECR_REPOSITORY}:v2" --build-arg VERSION=v2 -f Dockerfile .
+        # Spawn containers
+        echo Run Database
+        DBCONID=$(docker run -d \
+          -e MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
+          -e MYSQL_USER=${{ secrets.MYSQL_USER }} \
+          -e MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }} \
+          -e MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }} \
+          --network "${DOCKER_NETWORK}" \
+          --name db_container \
+          $ECR_REGISTRY/$ECR_DB_REPOSITORY:$IMAGE_TAG)
 
+        # Get DB IP Address
+        DBHOST=$(docker inspect -f '{{.NetworkSettings.Networks.clo835-network.IPAddress}}' $DBCONID)
 
-        docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:v1"
-        docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:v2"
+        # Wait for MySQL to be ready
+        echo "Waiting for MySQL to be ready..."
+        for i in {1..30}; do
+          if docker exec db_container mysql -u${{ secrets.MYSQL_USER }} -p${{ secrets.MYSQL_PASSWORD }} ${{ secrets.MYSQL_DATABASE }} -e "SELECT 1" >/dev/null 2>&1; then
+            echo "MySQL is ready"
+            break
+          fi
+          echo "Still waiting..."
+          sleep 2
+        done
 
+        # Run application container
+        echo Run Application
+        docker run -d -p 81:81 \
+          -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+          -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+          -e S3_BUCKET=$S3_BUCKET \
+          -e MYSQL_USER=${{ secrets.MYSQL_USER }} \
+          -e MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }} \
+          -e MYSQL_HOST=$DBHOST \
+          -e MYSQL_DB=${{ secrets.MYSQL_DATABASE }} \
+          -e BACKGROUND_IMAGE_URL=background.jpg \
+          -e GROUP_NAME=Group-13 \
+          -e GROUP_SLOGAN="Scaling the Future" \
+          --network "${DOCKER_NETWORK}" \
+          --name app_container \
+          $ECR_REGISTRY/$ECR_APP_REPOSITORY:$IMAGE_TAG
+
+        # Unit test
+        docker ps
+        echo "Pause for 10 seconds to let container start"
+        sleep 10
+
+        # Test root endpoint
+        if curl -s http://localhost:81 -o /dev/null -w "%{http_code}" | grep 200; then
+          echo "Root endpoint test passed: HTTP 200"
+        else
+          echo "Root endpoint test failed"
+          exit 1
+        fi
+
+        # Test /getemp endpoint
+        if curl -s http://localhost:81/getemp -o /dev/null -w "%{http_code}" | grep 200; then
+          echo "/getemp endpoint test passed: HTTP 200"
+        else
+          echo "/getemp endpoint test failed"
+          exit 1
+        fi
+
+        # Test S3 image download by checking logs
+        if docker logs app_container | grep "Downloaded background image from s3://my-clo835-backgrounds/background.jpg"; then
+          echo "S3 image download test passed"
+        else
+          echo "S3 image download test failed: Download log not found"
+          exit 1
+        fi
+
+    - name: DOCKER | Push
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      run: |
+        docker push $ECR_REGISTRY/$ECR_DB_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_APP_REPOSITORY:$IMAGE_TAG
+
+    - name: Clean up
+      if: always()
+      run: |
+        docker stop app_container db_container || true
+        docker rm app_container db_container || true
+        docker network rm $DOCKER_NETWORK || true
