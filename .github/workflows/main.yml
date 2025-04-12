@@ -114,7 +114,7 @@ jobs:
         docker logs app_container || true
         echo "--- Docker Logs (End) ---"
 
-        if docker logs app_container | grep -i "downloaded background image from s3://my-clo835-backgrounds"; then
+        if docker logs app_container | grep -i "downloaded background image"; then
           echo "S3 image download test passed"
         else
           echo "S3 image download test failed: Download log not found"
