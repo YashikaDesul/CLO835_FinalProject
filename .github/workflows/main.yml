@@ -110,16 +110,23 @@ jobs:
         fi
 
         # Test S3 image download by checking logs
-        echo "--- Docker Logs (Begin) ---"
-        docker logs app_container || true
-        echo "--- Docker Logs (End) ---"
+        
+          echo "Waiting for logs to flush..."
+          sleep 5
+          
+          APP_LOGS=$(docker logs app_container)
+          
+          echo "--- Docker Logs (Begin) ---"
+          echo "$APP_LOGS"
+          echo "--- Docker Logs (End) ---"
+          
+          if echo "$APP_LOGS" | grep -i "downloaded background image"; then
+            echo "S3 image download test passed"
+          else
+            echo "S3 image download test failed: Download log not found"
+            exit 1
+          fi
 
-        if docker logs app_container | grep -i "downloaded background image"; then
-          echo "S3 image download test passed"
-        else
-          echo "S3 image download test failed: Download log not found"
-          exit 1
-        fi
 
     - name: DOCKER | Push
       env:
