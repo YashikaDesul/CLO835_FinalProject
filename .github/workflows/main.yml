@@ -57,7 +57,8 @@ jobs:
           $ECR_REGISTRY/$ECR_DB_REPOSITORY:$IMAGE_TAG)
 
         # Get DB IP Address
-        DBHOST=$(docker inspect -f '{{.NetworkSettings.Networks.clo835-network.IPAddress}}' $DBCONID)
+        DBHOST=$(docker inspect -f '{{ index .NetworkSettings.Networks "clo835-network" "IPAddress" }}' $DBCONID)
+
 
         # Wait for MySQL to be ready
         echo "Waiting for MySQL to be ready..."
