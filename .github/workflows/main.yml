@@ -32,7 +32,7 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
         echo Build Database
-        docker build -t $ECR_REGISTRY/$ECR_DB_REPOSITORY:$IMAGE_TAG -f Dockerfile_mysql .
+        docker build -t $ECR_REGISTRY/$ECR_DB_REPOSITORY:$IMAGE_TAG -f Dockerfile.mysql .
 
         echo Build Application
         docker build -t $ECR_REGISTRY/$ECR_APP_REPOSITORY:$IMAGE_TAG -f Dockerfile .
@@ -109,24 +109,23 @@ jobs:
           exit 1
         fi
 
-        # Test S3 image download by checking logs
-        
-          echo "Waiting for logs to flush..."
-          sleep 5
-          
-          APP_LOGS=$(docker logs app_container)
-          
-          echo "--- Docker Logs (Begin) ---"
-          echo "$APP_LOGS"
-          echo "--- Docker Logs (End) ---"
-          
-          if echo "$APP_LOGS" | grep -i "downloaded background image"; then
+        # Test S3 image download by checking logs with retries
+        echo "Waiting for logs to flush..."
+        for i in {1..5}; do
+          if docker logs app_container 2>&1 | grep -q "Downloaded background image from s3"; then
             echo "S3 image download test passed"
-          else
-            echo "S3 image download test failed: Download log not found"
-            exit 1
+            break
           fi
-
+          echo "Logs not ready, retrying ($i/5)..."
+          sleep 5
+        done
+        # Final check after retries
+        if ! docker logs app_container 2>&1 | grep -q "Downloaded background image from s3"; then
+          echo "S3 image download test failed: Download log not found"
+          echo "Full logs for debugging:"
+          docker logs app_container 2>&1
+          exit 1
+        fi
 
     - name: DOCKER | Push
       env:
