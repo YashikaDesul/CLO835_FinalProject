@@ -29,7 +29,8 @@ def get_db_connection():
 
 # S3 Bucket configuration
 s3_client = boto3.client('s3')
-BUCKET_NAME = os.getenv('S3_BUCKET_NAME', 'my-clo835-backgrounds')
+#BUCKET_NAME = os.getenv('S3_BUCKET_NAME', 'my-clo835-backgrounds')
+BUCKET_NAME = os.getenv('S3_BUCKET', 'my-clo835-backgrounds')
 
 # Download background image from S3
 def download_background_image():
