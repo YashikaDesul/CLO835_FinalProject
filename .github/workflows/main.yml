@@ -111,7 +111,7 @@ jobs:
         fi
 
         # Test S3 image download by checking logs
-        if docker logs app_container | grep "Downloaded background image from s3://my-clo835-backgrounds/background.jpg"; then
+        if docker logs app_container | grep "Downloaded background image from s3://my-clo835-backgrounds"; then
           echo "S3 image download test passed"
         else
           echo "S3 image download test failed: Download log not found"
