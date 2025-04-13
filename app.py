@@ -5,20 +5,17 @@ import logging
 import mysql.connector
 import shutil
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Setup Flask
 app = Flask(__name__)
 
-# MySQL credentials from environment variables (Kubernetes secrets)
+# MySQL Configuration
 MYSQL_USER = os.getenv('MYSQL_USER')
 MYSQL_PASSWORD = os.getenv('MYSQL_PASSWORD')
 MYSQL_HOST = os.getenv('MYSQL_HOST', 'mysql-service')
 MYSQL_DB = os.getenv('MYSQL_DB', 'mydb')
 
-# MySQL Connection Helper
 def get_db_connection():
     return mysql.connector.connect(
         user=MYSQL_USER,
@@ -27,33 +24,46 @@ def get_db_connection():
         database=MYSQL_DB
     )
 
-# S3 Bucket configuration
-s3_client = boto3.client('s3')
-#BUCKET_NAME = os.getenv('S3_BUCKET_NAME', 'my-clo835-backgrounds')
+# S3 Client Initialization
+try:
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+        aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+        aws_session_token=os.getenv('AWS_SESSION_TOKEN'),
+        region_name='us-east-1'
+    )
+    logger.info("S3 client initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize S3 client: {e}")
+
 BUCKET_NAME = os.getenv('S3_BUCKET', 'my-clo835-backgrounds')
 
-# Download background image from S3
-def download_background_image():
-    local_path = '/tmp/background.jpg'
-    static_path = os.path.join(app.static_folder, 'background.jpg')
+# Download background image dynamically
+def download_background_image(image_key='background.jpg'):
+    local_path = f'/tmp/{image_key}'
+    static_path = os.path.join(app.static_folder, image_key)
     try:
-        s3_client.download_file(BUCKET_NAME, 'background.jpg', local_path)
-        logger.info(f"Downloaded background image from s3://{BUCKET_NAME}/background.jpg")
+        s3_client.head_object(Bucket=BUCKET_NAME, Key=image_key)
+        logger.info(f"Verified existence of s3://{BUCKET_NAME}/{image_key}")
+        s3_client.download_file(BUCKET_NAME, image_key, local_path)
+        logger.info(f"Downloaded background image to {local_path}")
+        os.makedirs(os.path.dirname(static_path), exist_ok=True)
         shutil.copy(local_path, static_path)
         logger.info(f"Copied background image to {static_path}")
-        return '/static/background.jpg'
+        return f'/static/{image_key}'
     except Exception as e:
-        logger.warning(f"Could not download image from S3. Reason: {e}")
+        logger.error(f"Failed to download image from S3: {e}")
         return '/static/default-image.jpg' if os.path.exists(static_path) else ''
 
-# Call this on app startup
-BACKGROUND_IMAGE_LOCAL = download_background_image()
+BACKGROUND_IMAGE_KEY = os.getenv('BACKGROUND_IMAGE_KEY', 'background.jpg')
+BACKGROUND_IMAGE_LOCAL = download_background_image(BACKGROUND_IMAGE_KEY)
+logger.info(f"BACKGROUND_IMAGE_LOCAL set to: {BACKGROUND_IMAGE_LOCAL}")
 
-# Group Name and Slogan from ConfigMap (env variables)
+# Group info
 GROUP_NAME = os.getenv('GROUP_NAME', 'Group-13')
 GROUP_SLOGAN = os.getenv('GROUP_SLOGAN', 'Scaling the Future')
 
-# Routes
 @app.route("/", methods=['GET', 'POST'])
 def home():
     return render_template('addemp.html',
@@ -76,7 +86,7 @@ def AddEmp():
     primary_skill = request.form['primary_skill']
     location = request.form['location']
 
-    insert_sql = "INSERT INTO employee VALUES (%s, %s, %s, %s, %s)"
+    insert_sql = "INSERT INTO employee (emp_id, first_name, last_name, primary_skill, location) VALUES (%s, %s, %s, %s, %s)"
     conn = get_db_connection()
     cursor = conn.cursor()
 
