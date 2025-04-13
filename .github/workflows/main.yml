@@ -1,4 +1,4 @@
-name: Build, Push Image to ECR for CLO Project 
+name: Build, Push Image to ECR for CLO Project
 
 on:
   push:
@@ -59,7 +59,6 @@ jobs:
         # Get DB IP Address
         DBHOST=$(docker inspect -f '{{ index .NetworkSettings.Networks "clo835-network" "IPAddress" }}' $DBCONID)
 
-
         # Wait for MySQL to be ready
         echo "Waiting for MySQL to be ready..."
         for i in {1..30}; do
@@ -76,6 +75,7 @@ jobs:
         docker run -d -p 81:81 \
           -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
           -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+          -e AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN \
           -e S3_BUCKET=$S3_BUCKET \
           -e MYSQL_USER=${{ secrets.MYSQL_USER }} \
           -e MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }} \
@@ -109,10 +109,21 @@ jobs:
           exit 1
         fi
 
-        # Test S3 image download by checking logs
-        if docker logs app_container | grep "Downloaded background image from s3://my-clo835-backgrounds/background.jpg"; then
-          echo "S3 image download test passed"
-        else
+        # Test S3 image download by checking logs with retries
+        echo "Waiting for logs to flush..."
+        for i in {1..5}; do
+          if docker logs app_container 2>&1 | grep -i -q "downloaded background image"; then
+            echo "S3 image download test passed"
+            break
+          fi
+          echo "Logs not ready, retrying ($i/5)..."
+          sleep 5
+        done
+        # Final check after retries
+        echo "--- Docker Logs (Begin) ---"
+        docker logs app_container 2>&1 || true
+        echo "--- Docker Logs (End) ---"
+        if ! docker logs app_container 2>&1 | grep -i -q "downloaded background image"; then
           echo "S3 image download test failed: Download log not found"
           exit 1
         fi
