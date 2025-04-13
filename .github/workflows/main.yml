@@ -1,4 +1,4 @@
-name: Build, Push Image to ECR for CLO Project
+name: Build, Push Image to ECR for CLO Project 
 
 on:
   push:
